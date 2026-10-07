@@ -1,94 +1,105 @@
 #include <QCoreApplication>
 #include <QTextStream>
 #include <QStringList>
+#include <QFile>
 #include "calculator.h"
-// Функция для вывода справки по командам
-void printHelp(QTextStream& out) {
-    out << "Доступные команды:\n";
-    out << " add <a> <b> - сложение\n";
-    out << " sub <a> <b> - вычитание\n";
-    out << " mul <a> <b> - умножение\n";
-    out << " div <a> <b> - деление\n";
-    out << " reset - сброс\n";
-    out << " help - эта справка\n";
-    out << " quit - выход\n";
+    // Function for displaying the list of available commands
+    void printHelp(QTextStream& out) {
+    out << "Available commands:\n";
+    out << " add <a> <b> - addition\n";
+    out << " sub <a> <b> - subtraction\n";
+    out << " mul <a> <b> - multiplication\n";
+    out << " div <a> <b> - division\n";
+    out << " reset - reset calculator\n";
+    out << " help - show this help\n";
+    out << " quit - exit\n";
 }
 int main(int argc, char* argv[]) {
-    // QCoreApplication вместо QApplication - для консольного приложения
+    // QCoreApplication is used instead of QApplication for a console application
     QCoreApplication app(argc, argv);
-    // Потоки ввода/вывода (кроссплатформенные, поддерживают Unicode)
+    // Input/output streams
     QTextStream in(stdin);
     QTextStream out(stdout);
-    // Создаём калькулятор (родитель не нужен - живёт до конца программы)
+    // Create the calculator
+    // No parent is needed because it lives until the end of the program
     Calculator calc;
-    // СОЕДИНЕНИЯ: связываем сигналы калькулятора с лямбда-обработчиками
-    // 1. При успешном вычислении - выводим результат
+    QFile historyFile("history.txt");
+    historyFile.open(QIODevice::WriteOnly | QIODevice::Append);
+    QTextStream historyStream(&historyFile);
+    QObject::connect(&calc, &Calculator::resultReady,
+                     [&historyStream](double result) {
+                         historyStream << "Result: " << result << "\n";
+                         historyStream.flush();
+                     });
+    // CONNECTIONS: connect calculator signals to lambda handlers
+    // 1. On successful calculation - print the result
     QObject::connect(&calc, &Calculator::resultReady,
                      [&out](double result) {
-                         out << "Результат: " << result << "\n";
+                         out << "Result: " << result << "\n";
                          out.flush();
                      });
-    // 2. При ошибке - выводим сообщение об ошибке
+    // 2. On error - print the error message
     QObject::connect(&calc, &Calculator::errorOccurred,
                      [&out](const QString& msg) {
-                         out << "Ошибка: " << msg << "\n";
+                         out << "Error: " << msg << "\n";
                          out.flush();
                      });
-    // Приветствие
-    out << "=== Консольный калькулятор на Qt ===\n";
+    // Greeting
+    out << "=== Qt Console Calculator ===\n";
     printHelp(out);
     out << "\n> ";
     out.flush();
-    // Основной цикл: читаем строки, парсим, вызываем слоты
+    // Main loop: read lines, parse commands and call calculator methods
     QString line;
     while (in.readLineInto(&line)) {
-        line = line.trimmed(); // Убираем пробелы по краям
-        // Пустая строка - просто продолжаем
+        line = line.trimmed(); // Remove leading and trailing spaces
+        // Empty line - just continue
         if (line.isEmpty()) {
             out << "> ";
             out.flush();
             continue;
         }
-        // Разбиваем строку на токены по пробелам
+        // Split the input into tokens by spaces
         QStringList parts = line.split(' ', Qt::SkipEmptyParts);
         QString command = parts.value(0).toLower();
-        // Обработка команд выхода
+        // Handle exit commands
         if (command == "quit" || command == "exit") {
-            out << "До свидания!\n";
+            out << "Goodbye!\n";
             break;
         }
-        // Справка
+        // Help
         if (command == "help") {
             printHelp(out);
             out << "> ";
             out.flush();
             continue;
         }
-        // Сброс
+        // Reset
         if (command == "reset") {
             calc.reset();
             out << "> ";
             out.flush();
             continue;
         }
-        // Арифметические команды требуют 3 токена: команда + 2 числа
+        // Arithmetic commands require 3 tokens: command + 2 numbers
         if (parts.size() != 3) {
-            out << "Ошибка: неверный формат. Используйте: <команда> <a> <b>\n";
+            out << "Error: invalid format. Use: <command> <a> <b>\n";
             out << "> ";
             out.flush();
             continue;
         }
-        // Преобразуем операнды в числа
+        // Convert operands to numbers
         bool ok1, ok2;
         double a = parts[1].toDouble(&ok1);
         double b = parts[2].toDouble(&ok2);
         if (!ok1 || !ok2) {
-            out << "Ошибка: не удалось преобразовать операнды в числа\n";
+            out << "Error: failed to convert operands to numbers\n";
             out << "> ";
             out.flush();
             continue;
         }
-        // Вызываем нужный слот (обычный вызов метода - сигнал излучится внутри)
+        // Execute the requested command
+        // A regular method call is used; the signal is emitted inside the method
         if (command == "add") {
             calc.add(a, b);
         }
@@ -102,13 +113,14 @@ int main(int argc, char* argv[]) {
             calc.divide(a, b);
         }
         else {
-            out << "Неизвестная команда: " << command << "\n";
+            out << "Unknown command: " << command << "\n";
         }
         out << "> ";
         out.flush();
     }
-    // QCoreApplication::exec() здесь не нужен:
-    // мы работаем в блокирующем режиме чтения, а не через цикл событий.
-    // Но если бы использовали QTimer или сеть - обязательно вызвали бы app.exec().
+    // QCoreApplication::exec() is not needed here.
+    // We use a blocking input loop instead of the event loop.
+    // If QTimer, networking, or other asynchronous functionality
+    // were used, app.exec() would be required.
     return 0;
 }
