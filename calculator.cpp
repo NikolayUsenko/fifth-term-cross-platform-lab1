@@ -36,7 +36,7 @@ void Calculator::divide(double a, double b) {
     // Критически важная проверка: деление на ноль недопустимо
     if (qFuzzyIsNull(b)) { // qFuzzyIsNull корректно сравнивает double с нулём
         m_hasError = true;
-        m_errorMessage = "Деление на ноль невозможно!";
+        m_errorMessage = "Division by zero is impossible!";
         emit errorOccurred(m_errorMessage); // Сообщаем об ошибке
         return; // Прерываем выполнение
     }

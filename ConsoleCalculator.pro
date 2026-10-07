@@ -12,11 +12,13 @@ TEMPLATE = app
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+        logger.cpp \
         main.cpp \
         calculator.cpp
 
 HEADERS += \
-        calculator.h
+        calculator.h \
+        logger.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
